@@ -3,7 +3,7 @@
 // ===============================
 
 // Change this PIN before giving the site to her.
-const CORRECT_PIN = "1234";
+const CORRECT_PIN = "2005";
 
 
 // ===============================

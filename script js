@@ -11,7 +11,7 @@ const supabaseClient = window.supabase.createClient(
 // SETTINGS
 // ============================================
 
-const CORRECT_PIN = "1234";
+const CORRECT_PIN = "2005";
 
 
 // ============================================

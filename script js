@@ -7,16 +7,16 @@ const supabaseClient = window.supabase.createClient(
 );
 
 
-// =================================
-// LOCAL PIN
-// =================================
+// ============================================
+// SETTINGS
+// ============================================
 
 const CORRECT_PIN = "1234";
 
 
-// =================================
+// ============================================
 // ELEMENTS
-// =================================
+// ============================================
 
 const lockScreen = document.getElementById("lockScreen");
 const journalScreen = document.getElementById("journalScreen");
@@ -28,35 +28,44 @@ const pinInputs = document.querySelectorAll(".pin");
 const pinError = document.getElementById("pinError");
 
 const todayDate = document.getElementById("todayDate");
+const journalText = document.getElementById("journalText");
+const shareEntry = document.getElementById("shareEntry");
+const saveBtn = document.getElementById("saveBtn");
+const savedMessage = document.getElementById("savedMessage");
 
-const journalText =
-    document.getElementById("journalText");
-
-const shareEntry =
-    document.getElementById("shareEntry");
-
-const saveBtn =
-    document.getElementById("saveBtn");
-
-const savedMessage =
-    document.getElementById("savedMessage");
-
-const moodButtons =
-    document.querySelectorAll(".mood");
+const moodButtons = document.querySelectorAll(".mood");
 
 
-// =================================
+// ============================================
 // STATE
-// =================================
-
-let selectedMood = "";
+// ============================================
 
 let currentUser = null;
+let selectedMood = "";
+let authReady = false;
 
 
-// =================================
+// ============================================
 // DATE
-// =================================
+// ============================================
+
+function getToday() {
+
+    const now = new Date();
+
+    const year = now.getFullYear();
+
+    const month = String(
+        now.getMonth() + 1
+    ).padStart(2, "0");
+
+    const day = String(
+        now.getDate()
+    ).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+}
+
 
 function updateDate() {
 
@@ -73,35 +82,15 @@ function updateDate() {
 updateDate();
 
 
-// =================================
-// GET TODAY
-// =================================
-
-function getToday() {
-
-    const now = new Date();
-
-    const year =
-        now.getFullYear();
-
-    const month =
-        String(now.getMonth() + 1).padStart(2, "0");
-
-    const day =
-        String(now.getDate()).padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
-}
-
-
-// =================================
-// ANONYMOUS AUTH
-// =================================
+// ============================================
+// SUPABASE ANONYMOUS AUTH
+// ============================================
 
 async function initializeAuth() {
 
     try {
 
+        // Check for an existing session
         const {
             data: {
                 session
@@ -112,17 +101,18 @@ async function initializeAuth() {
         if (session) {
 
             currentUser = session.user;
+            authReady = true;
 
             console.log(
-                "Existing anonymous session:",
+                "Existing user:",
                 currentUser.id
             );
 
-            return;
-
+            return true;
         }
 
 
+        // Create anonymous account
         const {
             data,
             error
@@ -131,33 +121,39 @@ async function initializeAuth() {
 
         if (error) {
 
-            console.error(error);
+            console.error(
+                "Anonymous auth error:",
+                error
+            );
 
-            pinError.textContent =
-                "Unable to connect. Please refresh.";
+            authReady = false;
 
-            return;
-
+            return false;
         }
 
 
         currentUser = data.user;
+        authReady = true;
 
         console.log(
-            "Anonymous account created:",
+            "Anonymous user created:",
             currentUser.id
         );
+
+        return true;
 
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "Authentication error:",
+            error
+        );
 
-        pinError.textContent =
-            "Connection error.";
+        authReady = false;
 
+        return false;
     }
-
 }
 
 
@@ -165,16 +161,98 @@ async function initializeAuth() {
 initializeAuth();
 
 
-// =================================
+// ============================================
 // PIN INPUT
-// =================================
+// ============================================
 
 pinInputs.forEach((input, index) => {
 
+    // Only allow numbers
+    input.addEventListener("keydown", (event) => {
+
+        // Allow backspace
+        if (event.key === "Backspace") {
+
+            if (input.value === "" && index > 0) {
+
+                pinInputs[index - 1].focus();
+
+            }
+
+            return;
+        }
+
+
+        // Allow left/right navigation
+        if (event.key === "ArrowLeft") {
+
+            if (index > 0) {
+                pinInputs[index - 1].focus();
+            }
+
+            return;
+        }
+
+
+        if (event.key === "ArrowRight") {
+
+            if (index < pinInputs.length - 1) {
+                pinInputs[index + 1].focus();
+            }
+
+            return;
+        }
+
+
+        // Enter
+        if (event.key === "Enter") {
+
+            unlockJournal();
+
+            return;
+        }
+
+
+        // Reject anything that isn't a number
+        if (!/^\d$/.test(event.key)) {
+
+            event.preventDefault();
+
+            return;
+        }
+
+
+        // If this box already has a number,
+        // replace it and move forward
+        if (input.value !== "") {
+
+            event.preventDefault();
+
+            input.value = event.key;
+
+            if (index < pinInputs.length - 1) {
+
+                pinInputs[index + 1].focus();
+
+            } else {
+
+                // Last number entered
+                unlockJournal();
+
+            }
+
+        }
+
+    });
+
+
+    // Handle pasted numbers
     input.addEventListener("input", () => {
 
-        input.value =
+        const value =
             input.value.replace(/\D/g, "");
+
+        input.value = value.slice(-1);
 
 
         if (
@@ -186,18 +264,11 @@ pinInputs.forEach((input, index) => {
 
         }
 
-    });
 
+        // Automatically unlock after 4 digits
+        if (getEnteredPin().length === 4) {
 
-    input.addEventListener("keydown", event => {
-
-        if (
-            event.key === "Backspace" &&
-            !input.value &&
-            index > 0
-        ) {
-
-            pinInputs[index - 1].focus();
+            unlockJournal();
 
         }
 
@@ -206,19 +277,40 @@ pinInputs.forEach((input, index) => {
 });
 
 
-// =================================
-// UNLOCK
-// =================================
+// ============================================
+// GET PIN
+// ============================================
 
-async function unlockJournal() {
+function getEnteredPin() {
 
-    let enteredPin = "";
+    let pin = "";
 
     pinInputs.forEach(input => {
 
-        enteredPin += input.value;
+        pin += input.value;
 
     });
+
+    return pin;
+}
+
+
+// ============================================
+// UNLOCK
+// ============================================
+
+async function unlockJournal() {
+
+    const enteredPin = getEnteredPin();
+
+
+    if (enteredPin.length !== 4) {
+
+        pinError.textContent =
+            "Enter all 4 numbers.";
+
+        return;
+    }
 
 
     if (enteredPin !== CORRECT_PIN) {
@@ -227,78 +319,62 @@ async function unlockJournal() {
             "Incorrect PIN.";
 
         pinInputs.forEach(input => {
+
             input.value = "";
+
         });
 
         pinInputs[0].focus();
 
         return;
-
     }
 
 
-    if (!currentUser) {
+    // Correct PIN
+    pinError.textContent =
+        "Unlocking...";
 
-        pinError.textContent =
-            "Connecting securely...";
 
-        await initializeAuth();
+    // Make sure Supabase authentication is ready
+    if (!authReady || !currentUser) {
 
+        const success =
+            await initializeAuth();
+
+
+        if (!success) {
+
+            pinError.textContent =
+                "Couldn't connect to the journal. Check your internet connection and try again.";
+
+            return;
+        }
     }
 
 
-    if (!currentUser) {
-
-        pinError.textContent =
-            "Couldn't connect. Try again.";
-
-        return;
-
-    }
-
-
-    pinError.textContent = "";
-
+    // Open journal
     lockScreen.classList.add("hidden");
 
     journalScreen.classList.remove("hidden");
 
-    await loadTodayEntry();
+    pinError.textContent = "";
 
+
+    // Load today's entry
+    await loadTodayEntry();
 }
 
 
 // Unlock button
-
 unlockBtn.addEventListener(
     "click",
     unlockJournal
 );
 
 
-// Enter key
-
-pinInputs.forEach(input => {
-
-    input.addEventListener(
-        "keydown",
-        event => {
-
-            if (event.key === "Enter") {
-
-                unlockJournal();
-
-            }
-
-        }
-    );
-
-});
-
-
-// =================================
+// ============================================
 // LOCK
-// =================================
+// ============================================
 
 function lockJournal() {
 
@@ -307,6 +383,15 @@ function lockJournal() {
     lockScreen.classList.remove("hidden");
 
 
+    // Clear PIN
+    pinInputs.forEach(input => {
+
+        input.value = "";
+
+    });
+
+
+    // Clear journal form
     journalText.value = "";
 
     shareEntry.checked = false;
@@ -321,15 +406,11 @@ function lockJournal() {
     });
 
 
-    pinInputs.forEach(input => {
+    savedMessage.textContent = "";
 
-        input.value = "";
-
-    });
-
+    pinError.textContent = "";
 
     pinInputs[0].focus();
-
 }
 
 
@@ -339,9 +420,9 @@ lockBtn.addEventListener(
 );
 
 
-// =================================
-// MOOD
-// =================================
+// ============================================
+// MOODS
+// ============================================
 
 moodButtons.forEach(button => {
 
@@ -349,12 +430,17 @@ moodButtons.forEach(button => {
 
         moodButtons.forEach(item => {
 
-            item.classList.remove("selected");
+            item.classList.remove(
+                "selected"
+            );
 
         });
 
 
-        button.classList.add("selected");
+        button.classList.add(
+            "selected"
+        );
+
 
         selectedMood =
             button.dataset.mood;
@@ -364,13 +450,15 @@ moodButtons.forEach(button => {
 });
 
 
-// =================================
+// ============================================
 // LOAD TODAY'S ENTRY
-// =================================
+// ============================================
 
 async function loadTodayEntry() {
 
-    if (!currentUser) return;
+    if (!currentUser) {
+        return;
+    }
 
 
     const today = getToday();
@@ -395,7 +483,6 @@ async function loadTodayEntry() {
         );
 
         return;
-
     }
 
 
@@ -407,6 +494,7 @@ async function loadTodayEntry() {
 
         selectedMood = "";
 
+
         moodButtons.forEach(button => {
 
             button.classList.remove(
@@ -416,7 +504,6 @@ async function loadTodayEntry() {
         });
 
         return;
-
     }
 
 
@@ -451,13 +538,12 @@ async function loadTodayEntry() {
         }
 
     });
-
 }
 
 
-// =================================
+// ============================================
 // SAVE ENTRY
-// =================================
+// ============================================
 
 saveBtn.addEventListener(
     "click",
@@ -479,31 +565,29 @@ async function saveEntry() {
         );
 
         return;
-
     }
 
 
     if (!currentUser) {
 
         showMessage(
-            "Still connecting...",
+            "Connecting...",
             true
         );
 
-        await initializeAuth();
+        const success =
+            await initializeAuth();
 
-    }
 
+        if (!success) {
 
-    if (!currentUser) {
+            showMessage(
+                "Couldn't connect to the server.",
+                true
+            );
 
-        showMessage(
-            "Couldn't connect.",
-            true
-        );
-
-        return;
-
+            return;
+        }
     }
 
 
@@ -516,20 +600,30 @@ async function saveEntry() {
     const today = getToday();
 
 
+    // Check whether today's entry exists
     const {
         data: existingEntry,
         error: findError
     } = await supabaseClient
         .from("journal_entries")
         .select("id")
-        .eq("user_id", currentUser.id)
-        .eq("entry_date", today)
+        .eq(
+            "user_id",
+            currentUser.id
+        )
+        .eq(
+            "entry_date",
+            today
+        )
         .maybeSingle();
 
 
     if (findError) {
 
-        console.error(findError);
+        console.error(
+            "Find entry error:",
+            findError
+        );
 
         showMessage(
             "Couldn't save entry.",
@@ -539,15 +633,13 @@ async function saveEntry() {
         resetSaveButton();
 
         return;
-
     }
 
 
     let result;
 
 
-    // UPDATE EXISTING ENTRY
-
+    // UPDATE
     if (existingEntry) {
 
         result =
@@ -555,9 +647,11 @@ async function saveEntry() {
                 .from("journal_entries")
                 .update({
 
-                    mood: selectedMood || null,
+                    mood:
+                        selectedMood || null,
 
-                    content: text,
+                    content:
+                        text,
 
                     shared:
                         shareEntry.checked,
@@ -570,12 +664,10 @@ async function saveEntry() {
                     "id",
                     existingEntry.id
                 );
-
     }
 
 
-    // CREATE NEW ENTRY
-
+    // INSERT
     else {
 
         result =
@@ -599,7 +691,6 @@ async function saveEntry() {
                         shareEntry.checked
 
                 });
-
     }
 
 
@@ -609,7 +700,6 @@ async function saveEntry() {
             "Save error:",
             result.error
         );
-
 
         showMessage(
             "Couldn't save entry.",
@@ -622,29 +712,27 @@ async function saveEntry() {
             "Saved securely.",
             false
         );
-
     }
 
 
     resetSaveButton();
-
 }
 
 
-// =================================
+// ============================================
 // MESSAGE
-// =================================
+// ============================================
 
 function showMessage(
     message,
-    error = false
+    isError = false
 ) {
 
     savedMessage.textContent =
         message;
 
     savedMessage.style.color =
-        error
+        isError
             ? "#d94c4c"
             : "#4f8a65";
 
@@ -654,13 +742,12 @@ function showMessage(
         savedMessage.textContent = "";
 
     }, 3000);
-
 }
 
 
-// =================================
+// ============================================
 // RESET SAVE BUTTON
-// =================================
+// ============================================
 
 function resetSaveButton() {
 
@@ -668,13 +755,12 @@ function resetSaveButton() {
 
     saveBtn.textContent =
         "Save today's entry";
-
 }
 
 
-// =================================
+// ============================================
 // NAVIGATION
-// =================================
+// ============================================
 
 const navItems =
     document.querySelectorAll(
@@ -709,7 +795,7 @@ navItems.forEach(item => {
             if (page === "past") {
 
                 showMessage(
-                    "Past days coming next."
+                    "Past days will be added next."
                 );
 
             }
@@ -718,19 +804,18 @@ navItems.forEach(item => {
             if (page === "shared") {
 
                 showMessage(
-                    "Shared journal coming next."
+                    "Shared entries will be added next."
                 );
 
             }
 
         }
     );
-
 });
 
 
-// =================================
+// ============================================
 // INITIAL FOCUS
-// =================================
+// ============================================
 
 pinInputs[0].focus();

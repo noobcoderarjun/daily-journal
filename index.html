@@ -1,70 +1,139 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
     <title>Daily</title>
 
-    <link rel="stylesheet" href="style.css">
+    <!-- Your CSS -->
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
 
-    <!-- Supabase -->
+    <!-- Supabase library MUST load before script.js -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 </head>
+
 
 <body>
 
-    <!-- =========================
-         LOCK SCREEN
-    ========================== -->
 
-    <section id="lockScreen" class="screen">
+    <!-- ==============================
+         LOCK SCREEN
+    =============================== -->
+
+    <section
+        id="lockScreen"
+        class="screen"
+    >
 
         <div class="lock-card">
 
-            <div class="logo">daily.</div>
+
+            <div class="logo">
+                daily.
+            </div>
+
 
             <p class="subtitle">
                 A little place for your thoughts.
             </p>
 
+
             <div class="lock-icon">
                 🔒
             </div>
 
-            <h2>Welcome back</h2>
+
+            <h2>
+                Welcome back
+            </h2>
+
 
             <p class="muted">
                 Enter your PIN to continue
             </p>
 
+
+            <!-- PIN -->
+
             <div class="pin-container">
 
-                <input type="password" maxlength="1" class="pin" inputmode="numeric">
-                <input type="password" maxlength="1" class="pin" inputmode="numeric">
-                <input type="password" maxlength="1" class="pin" inputmode="numeric">
-                <input type="password" maxlength="1" class="pin" inputmode="numeric">
+                <input
+                    type="password"
+                    maxlength="1"
+                    class="pin"
+                    inputmode="numeric"
+                    autocomplete="off"
+                >
+
+                <input
+                    type="password"
+                    maxlength="1"
+                    class="pin"
+                    inputmode="numeric"
+                    autocomplete="off"
+                >
+
+                <input
+                    type="password"
+                    maxlength="1"
+                    class="pin"
+                    inputmode="numeric"
+                    autocomplete="off"
+                >
+
+                <input
+                    type="password"
+                    maxlength="1"
+                    class="pin"
+                    inputmode="numeric"
+                    autocomplete="off"
+                >
 
             </div>
+
 
             <button id="unlockBtn">
                 Unlock
             </button>
 
-            <p id="pinError" class="error"></p>
+
+            <p
+                id="pinError"
+                class="error"
+            ></p>
+
 
         </div>
 
     </section>
 
 
-    <!-- =========================
-         JOURNAL APP
-    ========================== -->
 
-    <main id="journalScreen" class="hidden">
+    <!-- ==============================
+         JOURNAL APPLICATION
+    =============================== -->
+
+    <main
+        id="journalScreen"
+        class="hidden"
+    >
+
+
+        <!-- TOP BAR -->
 
         <header class="topbar">
+
 
             <div>
 
@@ -76,14 +145,25 @@
 
             </div>
 
-            <button id="lockBtn" class="lock-btn">
+
+            <button
+                id="lockBtn"
+                class="lock-btn"
+            >
                 Lock
             </button>
+
 
         </header>
 
 
+
+        <!-- MAIN JOURNAL -->
+
         <section class="journal-container">
+
+
+            <!-- GREETING -->
 
             <div class="greeting">
 
@@ -91,16 +171,19 @@
                     TODAY
                 </p>
 
+
                 <h1>
                     How was<br>
                     your day?
                 </h1>
+
 
                 <p class="question">
                     You can tell me anything.
                 </p>
 
             </div>
+
 
 
             <!-- MOOD -->
@@ -111,57 +194,129 @@
                     How are you feeling?
                 </p>
 
+
                 <div class="moods">
 
-                    <button class="mood" data-mood="happy">
-                        <span>😊</span>
-                        <small>Happy</small>
+
+                    <button
+                        class="mood"
+                        data-mood="happy"
+                        type="button"
+                    >
+
+                        <span>
+                            😊
+                        </span>
+
+                        <small>
+                            Happy
+                        </small>
+
                     </button>
 
-                    <button class="mood" data-mood="okay">
-                        <span>😐</span>
-                        <small>Okay</small>
+
+
+                    <button
+                        class="mood"
+                        data-mood="okay"
+                        type="button"
+                    >
+
+                        <span>
+                            😐
+                        </span>
+
+                        <small>
+                            Okay
+                        </small>
+
                     </button>
 
-                    <button class="mood" data-mood="sad">
-                        <span>😔</span>
-                        <small>Sad</small>
+
+
+                    <button
+                        class="mood"
+                        data-mood="sad"
+                        type="button"
+                    >
+
+                        <span>
+                            😔
+                        </span>
+
+                        <small>
+                            Sad
+                        </small>
+
                     </button>
 
-                    <button class="mood" data-mood="angry">
-                        <span>😡</span>
-                        <small>Angry</small>
+
+
+                    <button
+                        class="mood"
+                        data-mood="angry"
+                        type="button"
+                    >
+
+                        <span>
+                            😡
+                        </span>
+
+                        <small>
+                            Angry
+                        </small>
+
                     </button>
 
-                    <button class="mood" data-mood="love">
-                        <span>🥹</span>
-                        <small>Soft</small>
+
+
+                    <button
+                        class="mood"
+                        data-mood="love"
+                        type="button"
+                    >
+
+                        <span>
+                            🥹
+                        </span>
+
+                        <small>
+                            Soft
+                        </small>
+
                     </button>
+
 
                 </div>
 
             </div>
 
 
-            <!-- JOURNAL -->
+
+            <!-- JOURNAL TEXT -->
 
             <div class="section">
+
 
                 <p class="label">
                     Your thoughts
                 </p>
+
 
                 <textarea
                     id="journalText"
                     placeholder="Tell me about your day..."
                 ></textarea>
 
+
             </div>
+
 
 
             <!-- SHARE -->
 
             <div class="share-box">
+
 
                 <div>
 
@@ -169,75 +324,129 @@
                         Share this entry?
                     </strong>
 
+
                     <p>
                         Keep it private or let your person read it.
                     </p>
 
                 </div>
 
+
+
                 <label class="switch">
+
 
                     <input
                         type="checkbox"
                         id="shareEntry"
                     >
 
+
                     <span class="slider"></span>
 
+
                 </label>
+
 
             </div>
 
 
-            <button id="saveBtn" class="save-btn">
+
+            <!-- SAVE -->
+
+            <button
+                id="saveBtn"
+                class="save-btn"
+                type="button"
+            >
                 Save today's entry
             </button>
 
-            <p id="savedMessage" class="saved-message"></p>
+
+            <p
+                id="savedMessage"
+                class="saved-message"
+            ></p>
+
 
         </section>
 
 
-        <!-- =========================
-             BOTTOM NAV
-        ========================== -->
+
+        <!-- ==============================
+             BOTTOM NAVIGATION
+        =============================== -->
 
         <nav class="bottom-nav">
+
 
             <button
                 class="nav-item active"
                 data-page="today"
+                type="button"
             >
-                <span>✎</span>
-                <small>Today</small>
+
+                <span>
+                    ✎
+                </span>
+
+                <small>
+                    Today
+                </small>
+
             </button>
+
+
 
             <button
                 class="nav-item"
                 data-page="past"
+                type="button"
             >
-                <span>◷</span>
-                <small>Past days</small>
+
+                <span>
+                    ◷
+                </span>
+
+                <small>
+                    Past days
+                </small>
+
             </button>
+
+
 
             <button
                 class="nav-item"
                 data-page="shared"
+                type="button"
             >
-                <span>♡</span>
-                <small>Shared</small>
+
+                <span>
+                    ♡
+                </span>
+
+                <small>
+                    Shared
+                </small>
+
             </button>
 
+
         </nav>
+
 
     </main>
 
 
-    <!-- =========================
-         JAVASCRIPT
-    ========================== -->
+
+    <!-- ==============================
+         YOUR JAVASCRIPT
+    =============================== -->
 
     <script src="script.js"></script>
 
+
 </body>
+
 </html>

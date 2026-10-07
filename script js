@@ -1,14 +1,22 @@
-// ===============================
-// DAILY — V1
-// ===============================
+const SUPABASE_URL = "YOUR_PROJECT_URL";
+const SUPABASE_KEY = "YOUR_PUBLISHABLE_KEY";
 
-// Change this PIN before giving the site to her.
-const CORRECT_PIN = "2005";
+const supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
 
 
-// ===============================
+// =================================
+// LOCAL PIN
+// =================================
+
+const CORRECT_PIN = "1234";
+
+
+// =================================
 // ELEMENTS
-// ===============================
+// =================================
 
 const lockScreen = document.getElementById("lockScreen");
 const journalScreen = document.getElementById("journalScreen");
@@ -20,61 +28,177 @@ const pinInputs = document.querySelectorAll(".pin");
 const pinError = document.getElementById("pinError");
 
 const todayDate = document.getElementById("todayDate");
-const journalText = document.getElementById("journalText");
 
-const shareEntry = document.getElementById("shareEntry");
-const saveBtn = document.getElementById("saveBtn");
-const savedMessage = document.getElementById("savedMessage");
+const journalText =
+    document.getElementById("journalText");
 
-const moodButtons = document.querySelectorAll(".mood");
+const shareEntry =
+    document.getElementById("shareEntry");
+
+const saveBtn =
+    document.getElementById("saveBtn");
+
+const savedMessage =
+    document.getElementById("savedMessage");
+
+const moodButtons =
+    document.querySelectorAll(".mood");
 
 
-// ===============================
+// =================================
+// STATE
+// =================================
+
+let selectedMood = "";
+
+let currentUser = null;
+
+
+// =================================
 // DATE
-// ===============================
+// =================================
 
 function updateDate() {
 
     const today = new Date();
 
-    const options = {
-        weekday: "long",
-        month: "long",
-        day: "numeric"
-    };
-
     todayDate.textContent =
-        today.toLocaleDateString("en-US", options);
+        today.toLocaleDateString("en-US", {
+            weekday: "long",
+            month: "long",
+            day: "numeric"
+        });
 }
 
 updateDate();
 
 
-// ===============================
+// =================================
+// GET TODAY
+// =================================
+
+function getToday() {
+
+    const now = new Date();
+
+    const year =
+        now.getFullYear();
+
+    const month =
+        String(now.getMonth() + 1).padStart(2, "0");
+
+    const day =
+        String(now.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+}
+
+
+// =================================
+// ANONYMOUS AUTH
+// =================================
+
+async function initializeAuth() {
+
+    try {
+
+        const {
+            data: {
+                session
+            }
+        } = await supabaseClient.auth.getSession();
+
+
+        if (session) {
+
+            currentUser = session.user;
+
+            console.log(
+                "Existing anonymous session:",
+                currentUser.id
+            );
+
+            return;
+
+        }
+
+
+        const {
+            data,
+            error
+        } = await supabaseClient.auth.signInAnonymously();
+
+
+        if (error) {
+
+            console.error(error);
+
+            pinError.textContent =
+                "Unable to connect. Please refresh.";
+
+            return;
+
+        }
+
+
+        currentUser = data.user;
+
+        console.log(
+            "Anonymous account created:",
+            currentUser.id
+        );
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        pinError.textContent =
+            "Connection error.";
+
+    }
+
+}
+
+
+// Start authentication immediately
+initializeAuth();
+
+
+// =================================
 // PIN INPUT
-// ===============================
+// =================================
 
 pinInputs.forEach((input, index) => {
 
     input.addEventListener("input", () => {
 
-        input.value = input.value.replace(/\D/g, "");
+        input.value =
+            input.value.replace(/\D/g, "");
 
-        if (input.value && index < pinInputs.length - 1) {
+
+        if (
+            input.value &&
+            index < pinInputs.length - 1
+        ) {
+
             pinInputs[index + 1].focus();
+
         }
 
     });
 
 
-    input.addEventListener("keydown", (event) => {
+    input.addEventListener("keydown", event => {
 
         if (
             event.key === "Backspace" &&
             !input.value &&
             index > 0
         ) {
+
             pinInputs[index - 1].focus();
+
         }
 
     });
@@ -82,192 +206,248 @@ pinInputs.forEach((input, index) => {
 });
 
 
-// ===============================
+// =================================
 // UNLOCK
-// ===============================
+// =================================
 
-function unlockJournal() {
+async function unlockJournal() {
 
     let enteredPin = "";
 
     pinInputs.forEach(input => {
+
         enteredPin += input.value;
+
     });
 
 
-    if (enteredPin === CORRECT_PIN) {
+    if (enteredPin !== CORRECT_PIN) {
 
-        lockScreen.classList.add("hidden");
-        journalScreen.classList.remove("hidden");
-
-        pinError.textContent = "";
-
-        loadTodayEntry();
-
-    } else {
-
-        pinError.textContent = "Incorrect PIN.";
+        pinError.textContent =
+            "Incorrect PIN.";
 
         pinInputs.forEach(input => {
             input.value = "";
         });
 
         pinInputs[0].focus();
+
+        return;
+
     }
+
+
+    if (!currentUser) {
+
+        pinError.textContent =
+            "Connecting securely...";
+
+        await initializeAuth();
+
+    }
+
+
+    if (!currentUser) {
+
+        pinError.textContent =
+            "Couldn't connect. Try again.";
+
+        return;
+
+    }
+
+
+    pinError.textContent = "";
+
+    lockScreen.classList.add("hidden");
+
+    journalScreen.classList.remove("hidden");
+
+    await loadTodayEntry();
+
 }
 
-unlockBtn.addEventListener("click", unlockJournal);
+
+// Unlock button
+
+unlockBtn.addEventListener(
+    "click",
+    unlockJournal
+);
 
 
-// Press Enter to unlock
+// Enter key
+
 pinInputs.forEach(input => {
 
-    input.addEventListener("keydown", event => {
+    input.addEventListener(
+        "keydown",
+        event => {
 
-        if (event.key === "Enter") {
-            unlockJournal();
+            if (event.key === "Enter") {
+
+                unlockJournal();
+
+            }
+
         }
-
-    });
+    );
 
 });
 
 
-// ===============================
+// =================================
 // LOCK
-// ===============================
+// =================================
 
 function lockJournal() {
 
     journalScreen.classList.add("hidden");
+
     lockScreen.classList.remove("hidden");
 
-    pinInputs.forEach(input => {
-        input.value = "";
-    });
 
-    pinInputs[0].focus();
+    journalText.value = "";
 
-}
+    shareEntry.checked = false;
 
-lockBtn.addEventListener("click", lockJournal);
-
-
-// ===============================
-// MOOD
-// ===============================
-
-let selectedMood = "";
-
-moodButtons.forEach(button => {
-
-    button.addEventListener("click", () => {
-
-        moodButtons.forEach(item => {
-            item.classList.remove("selected");
-        });
-
-        button.classList.add("selected");
-
-        selectedMood = button.dataset.mood;
-
-    });
-
-});
-
-
-// ===============================
-// SAVE ENTRY
-// ===============================
-
-saveBtn.addEventListener("click", () => {
-
-    const text = journalText.value.trim();
-
-    if (!text) {
-
-        savedMessage.style.color = "#d94c4c";
-        savedMessage.textContent =
-            "Write something before saving.";
-
-        return;
-    }
-
-
-    const today = new Date()
-        .toISOString()
-        .split("T")[0];
-
-
-    const entry = {
-
-        date: today,
-
-        mood: selectedMood,
-
-        text: text,
-
-        shared: shareEntry.checked,
-
-        savedAt: new Date().toISOString()
-
-    };
-
-
-    localStorage.setItem(
-        `daily-entry-${today}`,
-        JSON.stringify(entry)
-    );
-
-
-    savedMessage.style.color = "#4f8a65";
-    savedMessage.textContent =
-        "Saved for today.";
-
-
-    setTimeout(() => {
-        savedMessage.textContent = "";
-    }, 3000);
-
-});
-
-
-// ===============================
-// LOAD TODAY'S ENTRY
-// ===============================
-
-function loadTodayEntry() {
-
-    const today = new Date()
-        .toISOString()
-        .split("T")[0];
-
-
-    const savedEntry =
-        localStorage.getItem(`daily-entry-${today}`);
-
-
-    if (!savedEntry) {
-        return;
-    }
-
-
-    const entry = JSON.parse(savedEntry);
-
-
-    journalText.value = entry.text || "";
-
-    selectedMood = entry.mood || "";
-
-    shareEntry.checked = entry.shared || false;
+    selectedMood = "";
 
 
     moodButtons.forEach(button => {
 
         button.classList.remove("selected");
 
-        if (button.dataset.mood === selectedMood) {
-            button.classList.add("selected");
+    });
+
+
+    pinInputs.forEach(input => {
+
+        input.value = "";
+
+    });
+
+
+    pinInputs[0].focus();
+
+}
+
+
+lockBtn.addEventListener(
+    "click",
+    lockJournal
+);
+
+
+// =================================
+// MOOD
+// =================================
+
+moodButtons.forEach(button => {
+
+    button.addEventListener("click", () => {
+
+        moodButtons.forEach(item => {
+
+            item.classList.remove("selected");
+
+        });
+
+
+        button.classList.add("selected");
+
+        selectedMood =
+            button.dataset.mood;
+
+    });
+
+});
+
+
+// =================================
+// LOAD TODAY'S ENTRY
+// =================================
+
+async function loadTodayEntry() {
+
+    if (!currentUser) return;
+
+
+    const today = getToday();
+
+
+    const {
+        data,
+        error
+    } = await supabaseClient
+        .from("journal_entries")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .eq("entry_date", today)
+        .maybeSingle();
+
+
+    if (error) {
+
+        console.error(
+            "Load error:",
+            error
+        );
+
+        return;
+
+    }
+
+
+    if (!data) {
+
+        journalText.value = "";
+
+        shareEntry.checked = false;
+
+        selectedMood = "";
+
+        moodButtons.forEach(button => {
+
+            button.classList.remove(
+                "selected"
+            );
+
+        });
+
+        return;
+
+    }
+
+
+    journalText.value =
+        data.content || "";
+
+
+    shareEntry.checked =
+        data.shared || false;
+
+
+    selectedMood =
+        data.mood || "";
+
+
+    moodButtons.forEach(button => {
+
+        button.classList.remove(
+            "selected"
+        );
+
+
+        if (
+            button.dataset.mood ===
+            selectedMood
+        ) {
+
+            button.classList.add(
+                "selected"
+            );
+
         }
 
     });
@@ -275,8 +455,282 @@ function loadTodayEntry() {
 }
 
 
-// ===============================
-// START
-// ===============================
+// =================================
+// SAVE ENTRY
+// =================================
+
+saveBtn.addEventListener(
+    "click",
+    saveEntry
+);
+
+
+async function saveEntry() {
+
+    const text =
+        journalText.value.trim();
+
+
+    if (!text) {
+
+        showMessage(
+            "Write something before saving.",
+            true
+        );
+
+        return;
+
+    }
+
+
+    if (!currentUser) {
+
+        showMessage(
+            "Still connecting...",
+            true
+        );
+
+        await initializeAuth();
+
+    }
+
+
+    if (!currentUser) {
+
+        showMessage(
+            "Couldn't connect.",
+            true
+        );
+
+        return;
+
+    }
+
+
+    saveBtn.disabled = true;
+
+    saveBtn.textContent =
+        "Saving...";
+
+
+    const today = getToday();
+
+
+    const {
+        data: existingEntry,
+        error: findError
+    } = await supabaseClient
+        .from("journal_entries")
+        .select("id")
+        .eq("user_id", currentUser.id)
+        .eq("entry_date", today)
+        .maybeSingle();
+
+
+    if (findError) {
+
+        console.error(findError);
+
+        showMessage(
+            "Couldn't save entry.",
+            true
+        );
+
+        resetSaveButton();
+
+        return;
+
+    }
+
+
+    let result;
+
+
+    // UPDATE EXISTING ENTRY
+
+    if (existingEntry) {
+
+        result =
+            await supabaseClient
+                .from("journal_entries")
+                .update({
+
+                    mood: selectedMood || null,
+
+                    content: text,
+
+                    shared:
+                        shareEntry.checked,
+
+                    updated_at:
+                        new Date().toISOString()
+
+                })
+                .eq(
+                    "id",
+                    existingEntry.id
+                );
+
+    }
+
+
+    // CREATE NEW ENTRY
+
+    else {
+
+        result =
+            await supabaseClient
+                .from("journal_entries")
+                .insert({
+
+                    user_id:
+                        currentUser.id,
+
+                    entry_date:
+                        today,
+
+                    mood:
+                        selectedMood || null,
+
+                    content:
+                        text,
+
+                    shared:
+                        shareEntry.checked
+
+                });
+
+    }
+
+
+    if (result.error) {
+
+        console.error(
+            "Save error:",
+            result.error
+        );
+
+
+        showMessage(
+            "Couldn't save entry.",
+            true
+        );
+
+    } else {
+
+        showMessage(
+            "Saved securely.",
+            false
+        );
+
+    }
+
+
+    resetSaveButton();
+
+}
+
+
+// =================================
+// MESSAGE
+// =================================
+
+function showMessage(
+    message,
+    error = false
+) {
+
+    savedMessage.textContent =
+        message;
+
+    savedMessage.style.color =
+        error
+            ? "#d94c4c"
+            : "#4f8a65";
+
+
+    setTimeout(() => {
+
+        savedMessage.textContent = "";
+
+    }, 3000);
+
+}
+
+
+// =================================
+// RESET SAVE BUTTON
+// =================================
+
+function resetSaveButton() {
+
+    saveBtn.disabled = false;
+
+    saveBtn.textContent =
+        "Save today's entry";
+
+}
+
+
+// =================================
+// NAVIGATION
+// =================================
+
+const navItems =
+    document.querySelectorAll(
+        ".nav-item"
+    );
+
+
+navItems.forEach(item => {
+
+    item.addEventListener(
+        "click",
+        () => {
+
+            navItems.forEach(nav => {
+
+                nav.classList.remove(
+                    "active"
+                );
+
+            });
+
+
+            item.classList.add(
+                "active"
+            );
+
+
+            const page =
+                item.dataset.page;
+
+
+            if (page === "past") {
+
+                showMessage(
+                    "Past days coming next."
+                );
+
+            }
+
+
+            if (page === "shared") {
+
+                showMessage(
+                    "Shared journal coming next."
+                );
+
+            }
+
+        }
+    );
+
+});
+
+
+// =================================
+// INITIAL FOCUS
+// =================================
 
 pinInputs[0].focus();
